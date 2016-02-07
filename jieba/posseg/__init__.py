@@ -41,17 +41,18 @@ else:
     from .prob_emit import P as emit_P
 
 
-class pair(object):
+class triple(object):
 
-    def __init__(self, word, flag):
+    def __init__(self, word, flag, prob=0.0):
         self.word = word
         self.flag = flag
+        self.prob = prob
 
     def __unicode__(self):
-        return '%s/%s' % (self.word, self.flag)
+        return '%s/%s/%f' % (self.word, self.flag, self.prob)
 
     def __repr__(self):
-        return 'pair(%r, %r)' % (self.word, self.flag)
+        return 'triple(%r, %r, %r)' % (self.word, self.flag, self.prob)
 
     def __str__(self):
         if PY2:
@@ -60,13 +61,13 @@ class pair(object):
             return self.__unicode__()
 
     def __iter__(self):
-        return iter((self.word, self.flag))
+        return iter((self.word, self.flag, self.prob))
 
     def __lt__(self, other):
         return self.word < other.word
 
     def __eq__(self, other):
-        return isinstance(other, pair) and self.word == other.word and self.flag == other.flag
+        return isinstance(other, triple) and self.word == other.word and self.flag == other.flag and self.prob == other.prob
 
     def __hash__(self):
         return hash(self.word)
@@ -124,13 +125,13 @@ class POSTokenizer(object):
             if pos == 'B':
                 begin = i
             elif pos == 'E':
-                yield pair(sentence[begin:i + 1], pos_list[i][1])
+                yield triple(sentence[begin:i + 1], pos_list[i][1], prob)
                 nexti = i + 1
             elif pos == 'S':
-                yield pair(char, pos_list[i][1])
+                yield triple(char, pos_list[i][1], prob)
                 nexti = i + 1
         if nexti < len(sentence):
-            yield pair(sentence[nexti:], pos_list[nexti][1])
+            yield triple(sentence[nexti:], pos_list[nexti][1], prob)
 
     def __cut_detail(self, sentence):
         blocks = re_han_detail.split(sentence)
@@ -143,11 +144,11 @@ class POSTokenizer(object):
                 for x in tmp:
                     if x:
                         if re_num.match(x):
-                            yield pair(x, 'm')
+                            yield triple(x, 'm')
                         elif re_eng.match(x):
-                            yield pair(x, 'eng')
+                            yield triple(x, 'eng')
                         else:
-                            yield pair(x, 'x')
+                            yield triple(x, 'x')
 
     def __cut_DAG_NO_HMM(self, sentence):
         DAG = self.tokenizer.get_DAG(sentence)
@@ -164,12 +165,12 @@ class POSTokenizer(object):
                 x = y
             else:
                 if buf:
-                    yield pair(buf, 'eng')
+                    yield triple(buf, 'eng')
                     buf = ''
-                yield pair(l_word, self.word_tag_tab.get(l_word, 'x'))
+                yield triple(l_word, self.word_tag_tab.get(l_word, 'x'))
                 x = y
         if buf:
-            yield pair(buf, 'eng')
+            yield triple(buf, 'eng')
             buf = ''
 
     def __cut_DAG(self, sentence):
@@ -189,28 +190,28 @@ class POSTokenizer(object):
             else:
                 if buf:
                     if len(buf) == 1:
-                        yield pair(buf, self.word_tag_tab.get(buf, 'x'))
+                        yield triple(buf, self.word_tag_tab.get(buf, 'x'))
                     elif not self.tokenizer.FREQ.get(buf):
                         recognized = self.__cut_detail(buf)
                         for t in recognized:
                             yield t
                     else:
                         for elem in buf:
-                            yield pair(elem, self.word_tag_tab.get(elem, 'x'))
+                            yield triple(elem, self.word_tag_tab.get(elem, 'x'))
                     buf = ''
-                yield pair(l_word, self.word_tag_tab.get(l_word, 'x'))
+                yield triple(l_word, self.word_tag_tab.get(l_word, 'x'))
             x = y
 
         if buf:
             if len(buf) == 1:
-                yield pair(buf, self.word_tag_tab.get(buf, 'x'))
+                yield triple(buf, self.word_tag_tab.get(buf, 'x'))
             elif not self.tokenizer.FREQ.get(buf):
                 recognized = self.__cut_detail(buf)
                 for t in recognized:
                     yield t
             else:
                 for elem in buf:
-                    yield pair(elem, self.word_tag_tab.get(elem, 'x'))
+                    yield triple(elem, self.word_tag_tab.get(elem, 'x'))
 
     def __cut_internal(self, sentence, HMM=True):
         self.makesure_userdict_loaded()
@@ -229,15 +230,15 @@ class POSTokenizer(object):
                 tmp = re_skip_internal.split(blk)
                 for x in tmp:
                     if re_skip_internal.match(x):
-                        yield pair(x, 'x')
+                        yield triple(x, 'x')
                     else:
                         for xx in x:
                             if re_num.match(xx):
-                                yield pair(xx, 'm')
+                                yield triple(xx, 'm')
                             elif re_eng.match(x):
-                                yield pair(xx, 'eng')
+                                yield triple(xx, 'eng')
                             else:
-                                yield pair(xx, 'x')
+                                yield triple(xx, 'x')
 
     def _lcut_internal(self, sentence):
         return list(self.__cut_internal(sentence))
